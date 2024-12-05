@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exchange Code to Refresh Token</title>
+</head>
+
+<body>
+
+  <button id="get-refresh-token">Get Refresh Token</button>
+
+  <script>
+    const code = new URLSearchParams(location.search.slice(1)).get('code')
+    document.querySelector('#get-refresh-token').addEventListener('click', () => exchangeCodeForTokens(code))
+    const clientId = '510446644958-kcitbd513uq9u0on88t8irggfekspujh.apps.googleusercontent.com'
+    const clientSecret = 'rahasia banget'; // Replace with your client secret
+
+    function exchangeCodeForTokens(code) {
+      const redirectUri = 'http://localhost:3000/other'; // Replace with your redirect URI
+
+      const url = 'https://oauth2.googleapis.com/token';
+      const params = new URLSearchParams();
+      params.append('code', code);
+      params.append('client_id', clientId);
+      params.append('client_secret', clientSecret);
+      params.append('redirect_uri', redirectUri);
+      params.append('grant_type', 'authorization_code');
+
+      params.forEach((v, k) => console.log(k, v))
+
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Tokens:', data);
+          // Store tokens securely
+          const { access_token, refresh_token, expires_in } = data;
+          localStorage.setItem('access_token', access_token);
+          localStorage.setItem('refresh_token', refresh_token);
+          // Handle expiration
+          // setTimeout(() => {
+          //   refreshToken();
+          // }, (expires_in - 60) * 1000); // Refresh 1 minute before expiration
+        })
+        .catch(error => {
+          console.error('Error exchanging code for tokens:', error);
+        });
+    }
+
+    function refreshToken() {
+      const refreshToken = localStorage.getItem('refresh_token');
+
+      if (!refreshToken) {
+        console.log('No refresh token found');
+        return;
+      }
+
+      const url = 'https://oauth2.googleapis.com/token';
+      const params = new URLSearchParams();
+      params.append('refresh_token', refreshToken);
+      params.append('client_id', clientId);
+      params.append('client_secret', clientSecret);
+      params.append('grant_type', 'refresh_token');
+
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.access_token) {
+            console.log('New Access Token:', data.access_token);
+            localStorage.setItem('access_token', data.access_token);
+          } else {
+            console.error('Error refreshing token:', data);
+          }
+        })
+        .catch(error => {
+          console.error('Error during refresh token request:', error);
+        });
+    }
+
+    function checkAccessTokenValidity(accessToken) {
+      const url = `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`;
+
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            console.log('Access token is invalid or expired');
+          } else {
+            console.log('Access token is valid', data);
+          }
+        })
+        .catch(error => {
+          console.error('Error validating access token:', error);
+        });
+    }
+
+  </script>
+</body>
+
+</html>
